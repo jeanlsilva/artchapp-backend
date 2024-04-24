@@ -1,0 +1,154 @@
+name: production-deploy
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+#      - name: Discord notification - start build
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: info
+#          text: ${{github.repository}} - ${{github.workflow}}
+#          details: '- **Pipeline:** https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}'
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+      
+      - name: Checkout Repo
+        uses: actions/checkout@master
+  
+      - name: Install Dependencies
+        run: yarn
+        
+      - name: Build
+        run: yarn build
+      
+      - name: Archive Master Artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: package-artifact
+          path: |
+            build
+            app.yaml
+            package.json
+            .env
+            .env.production
+
+      
+#      - name: Discord notification - finished build (Success)
+#        if: success()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: success
+#          description: Finished the build pipeline, starting deploys
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - finished build (error)
+#        if: failure()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: error
+#          description: Build ArtchApp backend failed
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - finished build (cancelled)
+#        if: cancelled()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: warn
+#          description: Build ArtchApp backend cancelled
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+  migration:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+#      - name: Discord notification - start migration
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: info
+#          text: ${{github.repository}} - ${{github.workflow}}
+#          details: '- **Pipeline:** https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}'
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+          
+      - name: Checkout Repo
+        uses: actions/checkout@master
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build
+        run: yarn build
+
+      - name: Migration
+        run: NODE_ENV=production yarn db:migration
+        
+#      - name: Discord notification - finished migration (Success)
+#        if: success()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: success
+#          description: Finished the build pipeline, starting deploys
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - finished migration (error)
+#        if: failure()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: error
+#          description: Build ArtchApp backend migration failed
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - finished migration (cancelled)
+#        if: cancelled()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: warn
+#          description: Build ArtchApp backend cancelled
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+  deploy:
+    needs: migration
+    runs-on: ubuntu-latest
+    steps:
+    
+      - name: Download Master Artifact
+        uses: actions/download-artifact@master
+        with:
+          name: package-artifact
+      
+      - name: Deploy to App Engine
+        uses: google-github-actions/deploy-appengine@v0.4.0
+        with:
+          project_id: empyrean-app-333313
+          working_directory: ./
+          credentials: ${{ secrets.GOOGLE_GAE_CREDENTIALS }}
+      
+#      - name: Discord notification - deploy clients (success)
+#        if: success()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: info
+#          description: Deploy finished - ArtchApp backend
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - deploy clients (error)
+#        if: failure()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: error
+#          description: Deploy ArtchApp backend failed
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}
+
+#      - name: Discord notification - deploy clients (cancelled)
+#        if: cancelled()
+#        uses: rjstone/discord-webhook-notify@v1.0.4
+#        with:
+#          severity: warn
+#          description: Deploy ArtchApp backend cancelled
+#          webhookUrl: ${{ secrets.DISCORD_CHANNEL_WEBHOOK }}

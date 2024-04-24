@@ -1,0 +1,9 @@
+FROM node:13.14
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+ARG DOCKER_ENV=development
+ENV NODE_ENV=${DOCKER_ENV}
+
+CMD ["yarn", "start:dev"]

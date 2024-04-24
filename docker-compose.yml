@@ -1,0 +1,64 @@
+version: '3'
+services:
+  database-artchapp:
+    image: postgres:12
+    container_name: 'database-artchapp'
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: artchapp
+    volumes:
+    - 'database-artchapp:/var/lib/postgresql/data'
+
+  dev: &defaults
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+      args:
+        DOCKER_ENV: development
+    container_name: artchapp-dev
+    volumes:
+      - './:/usr/src/app'
+    ports:
+      - '4000:4000'
+    depends_on:
+      - database-artchapp
+  database-artchapp-test:
+    image: postgres:12
+    restart: always
+    container_name: 'database-artchapp-test'
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: database-artchapptest
+    volumes:
+      - dbtest:/var/lib/postgresql/data
+
+  web:
+    image: nginx
+    volumes:
+      - ./docs/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf
+      - ./docs/nginx/certs:/etc/nginx/certs
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - database-artchapp-test
+    
+  first-install:
+    <<: *defaults
+    command: 'sh -c " 
+      yarn && 
+      NODE_ENV=development yarn drop &&
+      NODE_ENV=development yarn db:migration && 
+      NODE_ENV=development yarn seed:run"'
+    depends_on:
+      - database-artchapp
+
+volumes:
+  database-artchapp: {}
+  dbtest: {}
